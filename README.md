@@ -160,9 +160,3 @@ If not, **SSE might just be the smarter move**.
 **About the Author**  
 I’m Sujan Odari — a Senior Software Engineer from Kathmandu, Nepal. I build real-world apps powered by Node.js, React, and machine intelligence for U.S. and European companies.  
 🔗 [linkedin.com/in/sujan-odari](https://linkedin.com/in/sujan-odari-532ba9152)
-
----
-
-### Want the Code?
-I’ve bundled the full example (backend + frontend + animations) in a ZIP:  
-👉 [Download it here](sandbox:/mnt/data/sujan_resume_stream.zip)
