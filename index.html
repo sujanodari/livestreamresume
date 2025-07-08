@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Sujan Odari Resume Stream</title>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background-color: #f7f7f7;
+      color: #222;
+      padding: 2rem;
+      max-width: 720px;
+      margin: auto;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #4caf50;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-bottom: 2rem;
+    }
+
+    #story {
+      border-left: 3px solid #4caf50;
+      padding-left: 1.2rem;
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+
+    h2 {
+      font-weight: bold;
+      font-size: 1.6rem;
+      margin-top: 0;
+    }
+
+    p {
+      line-height: 1.6;
+      margin: 1.2rem 0;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+
+<body>
+  <h1>📄 Sujan Odari — Live Resume Stream</h1>
+  <button id="startBtn">▶ Start Resume Stream</button>
+  <div id="story"></div>
+
+  <script>
+    const storyEl = document.getElementById("story");
+    const startBtn = document.getElementById("startBtn");
+    let evtSource = null;
+
+    const clientId = sessionStorage.getItem("clientId") || `client_${Math.random().toString(36).substring(2, 10)}`;
+    sessionStorage.setItem("clientId", clientId);
+
+    const typingSpeed = 4;
+    const queue = [];
+    let isTyping = false;
+
+    function typeHTMLBlockFromMarkdown(markdown, container, speed = typingSpeed) {
+      return new Promise(resolve => {
+        const html = marked.parse(markdown.trim());
+        const temp = document.createElement("div");
+        temp.innerHTML = html;
+
+        const original = temp.firstChild;
+        const element = document.createElement(original.tagName.toLowerCase());
+
+        for (const attr of original.attributes) {
+          element.setAttribute(attr.name, attr.value);
+        }
+        container.appendChild(element);
+
+        const fullText = original.innerHTML;
+        let i = 0;
+
+        function typeChar() {
+          if (i <= fullText.length) {
+            element.innerHTML = fullText.slice(0, i);
+            i++;
+            container.scrollTop = container.scrollHeight;
+            setTimeout(typeChar, speed);
+          } else {
+            resolve();
+          }
+        }
+
+        typeChar();
+      });
+    }
+
+    async function processQueue() {
+      if (isTyping) return;
+      isTyping = true;
+
+      while (queue.length > 0) {
+        const line = queue.shift();
+        await typeHTMLBlockFromMarkdown(line, storyEl);
+      }
+
+      isTyping = false;
+    }
+
+    startBtn.addEventListener("click", async () => {
+      storyEl.innerHTML = "";
+
+      if (evtSource) {
+        console.log("Closing previous SSE connection...");
+        evtSource.close();
+        evtSource = null;
+      }
+
+      function connectSSE(url) {
+        return new Promise((resolve, reject) => {
+          const source = new EventSource(url);
+
+          source.onopen = () => {
+            console.log("SSE connection opened");
+            resolve(source);
+          };
+
+          source.onerror = (err) => {
+            console.error("SSE error", err);
+            source.close();
+            reject(err);
+          };
+
+          source.onmessage = (event) => {
+            console.log("Received:", event.data);
+            queue.push(event.data);
+            processQueue();
+          };
+        });
+      }
+
+      try {
+        evtSource = await connectSSE(`http://localhost:3000/stream?id=${clientId}`);
+
+        const response = await fetch("http://localhost:3000/start", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: clientId })
+        });
+
+        if (!response.ok) throw new Error("Failed to start story");
+        console.log("Story streaming started for", clientId);
+      } catch (err) {
+        console.error("Error initializing stream:", err);
+      }
+    });
+  </script>
+</body>
+
+</html>
+ 
